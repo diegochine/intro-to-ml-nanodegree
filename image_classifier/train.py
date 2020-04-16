@@ -5,19 +5,20 @@ from utils import save_checkpoint
 from torch import optim
 from workspace_utils import active_session
 
+
 if __name__  == "__main__":
     parser = argparse.ArgumentParser(description='Training script')
-    parser.add_argument('data_dir', action='store', type=str)
+    parser.add_argument('--data_dir', action='store', default='./flowers', type=str, help='Directory to training images')
     # Set directory to save checkpoints: python train.py data_dir --save_dir save_directory
-    parser.add_argument('--save_dir', action='store', default='./checkpoints', type=str)
+    parser.add_argument('--save_dir', action='store', default='./checkpoints', type=str, help='Directory to save checkpoints')
     # Choose architecture: python train.py data_dir --arch "vgg13"
-    parser.add_argument('--arch', action='store', default='vgg13', type=str)
+    parser.add_argument('--arch', action='store', default='vgg19', type=str, choices=['vgg19', 'resnet101', 'densenet121'], help='Architecture')
     # Set hyperparameters: python train.py data_dir --learning_rate 0.01 --hidden_units 512 --epochs 20
-    parser.add_argument('--learning_rate', action='store', default='0.001', type=float)
-    parser.add_argument('--hidden_units', action='append', default=[], type=int)
-    parser.add_argument('--epochs', action='store', default='10', type=int)
+    parser.add_argument('--learning_rate', action='store', default='0.001', type=float, help='Learning rate')
+    parser.add_argument('--hidden_units', action='append', default=[], type=int, help='hidden units')
+    parser.add_argument('--epochs', action='store', default='10', type=int, help='Epoch count')
     # Use GPU for training: python train.py data_dir --gpu
-    parser.add_argument('--gpu', action='store_true', default=False)
+    parser.add_argument('--gpu', action='store_true', default=False, help='Use GPU for training')
     options = parser.parse_args(sys.argv[1:])
     if not options.hidden_units:
         options.hidden_units = [512]
@@ -32,10 +33,9 @@ if __name__  == "__main__":
     trainloader, validloader, _, class_to_idx = load_data(options.data_dir)
     
     # building model and optimizer, and setting loss function
-    model = build_model(arch=options.arch, hidden_units=options.hidden_units)
+    model, optimizer = build_model(arch=options.arch, hidden_units=options.hidden_units, lr=options.learning_rate)
     model.to(device)
     criterion = nn.NLLLoss()
-    optimizer = optim.Adam(model.classifier.parameters(), lr=options.learning_rate)
     # training loop
     print('Training loop starting')
     with active_session():

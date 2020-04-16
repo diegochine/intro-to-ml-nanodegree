@@ -35,27 +35,47 @@ def load_data(data_dir='flowers'):
     
     return trainloader, validloader, testloader, train_data.class_to_idx
 
-def build_model(arch='vgg13', hidden_units=[1024], p_drop=0.25):
-    if arch == 'vgg11':
-        model = models.vgg11(pretrained=True)
-    elif arch == 'vgg13':
-        model = models.vgg13(pretrained=True)
-    elif arch == 'vgg16':
-        model = models.vgg16(pretrained=True)
-    elif arch == 'vgg19':
-        model = models.vgg19(pretrained=True)
-    else:
-        raise ValueError('Invalid/not supported architecture')
+def build_model(arch='vgg19', hidden_units=[1024], p_drop=0.3, lr=0.01):
+    t_models = {'vgg19': models.vgg19(pretrained=True),
+                'densenet121': models.densenet121(pretrained=True),
+                'resnet101': models.resnet101(pretrained=True)}
+    
+    # get pretrained model and freeze parameters
+    model = t_models.get(arch, 'vgg19')
     for param in model.parameters():
         param.requires_grad = False
-    
-    # generate layers
-    layers = [('input', nn.Linear(model.classifier[0].in_features, hidden_units[0])), ('relu', nn.ReLU()), ('drop', nn.Dropout(p_drop))]
-    for i, (s1, s2) in enumerate(zip(hidden_units[:-1], hidden_units[1:])):
-        layers.append(('hl_' + str(i), nn.Linear(s1, s2)))
-        layers.append(('relu_' + str(i), nn.ReLU()))
-        layers.append(('drop_' + str(i), nn.Dropout(p_drop)))
-    layers += [('out', nn.Linear(hidden_units[-1], 102)), ('logits', nn.LogSoftmax(dim=1))]
-    # change last layer of pretrained model
-    model.classifier = nn.Sequential(OrderedDict(layers))
-    return model
+       
+    # generate final layer and optimizer, based on the pretrained model
+    if arch == 'vgg19':
+        layers = [('input', nn.Linear(25088, hidden_units[0])), ('relu', nn.ReLU()), ('drop', nn.Dropout(p_drop))]
+        for i, (s1, s2) in enumerate(zip(hidden_units[:-1], hidden_units[1:])):
+            layers.append(('hl_' + str(i), nn.Linear(s1, s2)))
+            layers.append(('relu_' + str(i), nn.ReLU()))
+            layers.append(('drop_' + str(i), nn.Dropout(p_drop)))
+        layers += [('out', nn.Linear(hidden_units[-1], 102)), ('logits', nn.LogSoftmax(dim=1))]
+        # change last layer of pretrained model
+        model.classifier = nn.Sequential(OrderedDict(layers))
+        optimizer = optim.Adam(model.classifier.parameters(), lr=lr)
+    elif arch == 'densenet121':
+        layers = [('input', nn.Linear(1024, hidden_units[0])), ('relu', nn.ReLU()), ('drop', nn.Dropout(p_drop))]
+        for i, (s1, s2) in enumerate(zip(hidden_units[:-1], hidden_units[1:])):
+            layers.append(('hl_' + str(i), nn.Linear(s1, s2)))
+            layers.append(('relu_' + str(i), nn.ReLU()))
+            layers.append(('drop_' + str(i), nn.Dropout(p_drop)))
+        layers += [('out', nn.Linear(hidden_units[-1], 102)), ('logits', nn.LogSoftmax(dim=1))]
+        # change last layer of pretrained model
+        model.classifier = nn.Sequential(OrderedDict(layers))
+        optimizer = optim.Adam(model.classifier.parameters(), lr=lr)
+    elif arch == 'resnet101':
+        layers = [('input', nn.Linear(2048, hidden_units[0])), ('relu', nn.ReLU()), ('drop', nn.Dropout(p_drop))]
+        for i, (s1, s2) in enumerate(zip(hidden_units[:-1], hidden_units[1:])):
+            layers.append(('hl_' + str(i), nn.Linear(s1, s2)))
+            layers.append(('relu_' + str(i), nn.ReLU()))
+            layers.append(('drop_' + str(i), nn.Dropout(p_drop)))
+        layers += [('out', nn.Linear(hidden_units[-1], 102)), ('logits', nn.LogSoftmax(dim=1))]
+        # change last layer of pretrained model
+        model.fc = nn.Sequential(OrderedDict(layers))
+        optimizer = optim.Adam(model.fc.parameters(), lr=lr)
+    else:
+        raise ValueError('Invalid/not supported architecture')
+    return model, optimizer

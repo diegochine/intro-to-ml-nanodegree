@@ -6,14 +6,14 @@ from utils import load_mapping, load_checkpoint, process_image
 if __name__  == "__main__":
     # setting command line arguments
     parser = argparse.ArgumentParser(description='Inference script')
-    parser.add_argument('img_path', action='store', type=str)
-    parser.add_argument('checkpoint', action='store', type=str)
+    parser.add_argument('img_path', action='store', type=str, help='Path to image (.jpg)')
+    parser.add_argument('checkpoint', action='store', type=str, help='Path to checkpoint (.pth)')
     # Return top KK most likely classes: python predict.py input checkpoint --top_k 3
-    parser.add_argument('--top_k', action='store', default=1, type=int)
+    parser.add_argument('--top_k', action='store', default=1, type=int, help='Top k most likely classes')
     # Use a mapping of categories to real names: python predict.py input checkpoint --category_names cat_to_name.json
-    parser.add_argument('--category_names', action='store', default='cat_to_name.json', type=str)
+    parser.add_argument('--category_names', action='store', default='cat_to_name.json', type=str, help='JSON categories mapping')
     # Use GPU for inference: python predict.py input checkpoint --gpu
-    parser.add_argument('--gpu', action='store_true', default=False)
+    parser.add_argument('--gpu', action='store_true', default=False, help='Use GPU for inference')
     options = parser.parse_args(sys.argv[1:])
 
     # choosing device (gpu or cpu)

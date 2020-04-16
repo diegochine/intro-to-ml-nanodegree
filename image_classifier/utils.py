@@ -32,35 +32,50 @@ def load_mapping(filepath):
         cat_to_name = json.load(f)
     return cat_to_name
 
-def load_checkpoint(filename='checkpoint.pth'):
-    checkpoint = torch.load(filename)
-    model = build_model(arch=checkpoint['arch'], 
-                        hidden_units=checkpoint['hidden_units'])
-    model.classifier.load_state_dict(checkpoint['model_state'])
+def load_checkpoint(save_dir='./checkpoints', filename='checkpoint.pth', path=None):
+    if path is not None:
+        checkpoints = torch.load(path)
+    else:
+        checkpoint = torch.load(save_dir + '/' + filename)
+    model, optimizer = build_model(arch=checkpoint['arch'], 
+                                hidden_units=checkpoint['hidden_units'],
+                                lr=checkpoint['lr'])
+    if checkpoint['arch'] == 'resnet101':
+        model.fc = checkpoint['fc']
+    else:
+        model.classifier = checkpoint['classifier']
+    model.load_state_dict(checkpoint['state_dict'])
     model.class_to_idx = checkpoint['class_to_idx']
     model.idx_to_class = checkpoint['idx_to_class']
     if not checkpoint['fully_trained']:
-        optimizer = optim.Adam(model.classifier.parameters(), lr=checkpoint['optimizer_lr'])
+        if checkpoint['arch'] == 'resnet101':
+            optimizer = optim.Adam(model.fc.parameters(), lr=checkpoint['lr'])
+        else:
+            optimizer = optim.Adam(model.classifier.parameters(), lr=checkpoint['lr'])
         optimizer.load_state_dict(checkpoint['optimizer_state'])
         return model, optimizer
     else:
         return model
     
-def save_checkpoint(model, class_to_idx, hidden_units, lr, arch, save_dir,
+def save_checkpoint(model, class_to_idx, hidden_units, lr, arch, save_dir='./checkpoints',
                     e = 0, fully_trained = True, optimizer = None, filename=None):
     # create save_dir if it doesn't exists
     Path(save_dir).mkdir(parents=True, exist_ok=True)
     checkpoint = {'hidden_units': hidden_units,
-                  'model_state': model.classifier.state_dict(),
+                  'state_dict': model.state_dict(),
                   'epoch': e,
                   'lr': lr,
                   'arch': arch,
                   'fully_trained': fully_trained,
                   'class_to_idx': class_to_idx,
                   'idx_to_class': {v:k for k, v in class_to_idx.items()}}
+    if arch == 'resnet101':
+        checkpoint['fc'] = model.fc
+    else:
+        checkpoint['classifier'] = model.classifier
     if filename is None:
         filename = arch + '.pth'
     if not fully_trained:
         checkpoint['optimizer_state'] = optimizer.state_dict()
-        checkpoint['optimizer_lr'] = optimizer.param_groups[0]['lr']
     torch.save(checkpoint, save_dir + '/' + filename)
+    return save_dir, filename
